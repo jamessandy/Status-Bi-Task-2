@@ -1,0 +1,54 @@
+---
+services:
+  database:
+    image: 'postgres:15'
+    container_name: 'database'
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_PASSWORD: Password
+      POSTGRES_USER: admin
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - "./postgres/data:/var/lib/postgresql/data"
+      - "./postgres/init/:/docker-entrypoint-initdb.d"
+    ports:
+      - '5432:5432'
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d postgres"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
+
+  dbt:
+    container_name: dbt
+    image: ghcr.io/dbt-labs/dbt-postgres:1.7.2 #dbtlabs/dbt:latest  #dbt-dummy
+    build: dbt_project/
+    volumes:
+      - ./dbt_project:/usr/app/dbt
+      - ./sync_remote_to_local.py:/usr/app/sync_remote_to_local.py
+    ports:
+      - "8080:8080"
+    environment:
+      DBT_PROFILES_DIR: /usr/app/dbt
+      DBT_TARGET: dev
+    depends_on:
+      - database
+    entrypoint: ["python3", "/usr/app/dbt/entrypoint.sh"]
+    command: ["run"]
+
+  grafana:
+    image: 'grafana/grafana-enterprise'
+    container_name: 'grafana'
+    volumes:
+      - "grafana-data:/var/lib/grafana"
+      - "./grafana/grafana.ini:/etc/grafana/grafana.ini"
+      - "./grafana/grafana-datasource-provisioning.yml:/etc/grafana/provisioning/datasources/postgres.yml"
+    ports:
+      - '3000:3000'
+    depends_on:
+      database:
+        condition: service_healthy
+
+volumes:
+  grafana-data:

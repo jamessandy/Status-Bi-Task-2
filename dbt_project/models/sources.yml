@@ -1,0 +1,17 @@
+version: 2
+
+sources:
+  - name: local_github
+    database: postgres
+    schema: public
+    tables:
+      - name: repositories
+      - name: issues
+      - name: pull_requests
+      - name: commits
+
+  - name: local_finance
+    database: postgres
+    schema: public
+    tables:
+      - name: invoice
